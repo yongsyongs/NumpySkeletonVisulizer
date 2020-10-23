@@ -16,12 +16,6 @@ public static class NPTools
             shapeString += d.ToString() + ", ";
         shapeString += ")";
         Debug.Log("data shape: " + shapeString);
-        
-        if(dims.Length != 3)
-        {
-            EditorUtility.DisplayDialog("Shape Error", "array shape must be (T, J, 2 or 3).", "ok");
-            return null;
-        }
 
         return data;
     }
