@@ -16,4 +16,4 @@ After load a file, you can see J sphere objects moving according to the loaded a
 - function to adjust the length of __each__ skeleton.
 - function to render lines by connecting each joint by the user.
 
-This project uses NuGetForUnity and NumSharp.
+This project uses additional packages: NuGetForUnity and NumSharp.
