@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Joint : MonoBehaviour
+public class JointSphere : MonoBehaviour
 {
     private int jointNumber;
 

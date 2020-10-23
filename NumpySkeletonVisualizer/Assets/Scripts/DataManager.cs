@@ -55,13 +55,13 @@ public class DataManager : MonoBehaviour
             for (int i = 0; i < jointNum; i++)
             {
                 jointList.Add(Instantiate(jointPrefab));
-                jointList[i].AddComponent<Joint>();
-                jointList[i].GetComponent<Joint>().SetJointIndex(i);
+                jointList[i].AddComponent<JointSphere>();
+                jointList[i].GetComponent<JointSphere>().SetJointIndex(i);
                 jointTransformList.Add(jointList[i].transform);
             }
 
             foreach(var g in jointList)
-                g.AddComponent<Joint>();
+                g.AddComponent<JointSphere>();
         }
         else
         {
