@@ -51,6 +51,8 @@ public class DataManager : MonoBehaviour
             {
                 if(adjMat[i, j])
                 {
+                    // if you want to view a skeleton in Scene View only, you can use Debug.DrawLine which is more efficient and easy to use.
+                    // Just add "Debug."
                     DrawLine(jointList[i].transform.position, jointList[j].transform.position, Color.red);
                 }
             }
