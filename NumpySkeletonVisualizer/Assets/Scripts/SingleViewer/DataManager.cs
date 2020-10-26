@@ -215,7 +215,7 @@ public class DataManager : MonoBehaviour
         string path = EditorUtility.OpenFilePanel("Open Adjacency Matrix File", "", "npy");
         if (path.Length != 0)
         {
-            adjMat = NPTools.LoadNpyFile(path);
+            adjMat = np.load(path);
         }
     }
 
@@ -225,7 +225,7 @@ public class DataManager : MonoBehaviour
         if(path.Length != 0)
         {
             // read npy file that has (T, J, 2 or 3) shape.
-            skeletonArray = NPTools.LoadNpyFile(path) * scaleFactor;
+            skeletonArray = np.load(path) * scaleFactor;
             int jdim = skeletonArray.shape[1];
             adjMat = np.full<bool>(false, new int[] { jdim, jdim });
             GenerateJoints();
