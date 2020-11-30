@@ -741,7 +741,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scrollSpeed: 100
   moveSpeed: 100
-  rotateSpeed: 2
+  rotateSpeed: 200
+  yMinLimit: -80
+  yMaxLimit: 80
+  zoomDampening: 5
 --- !u!1 &1267669109
 GameObject:
   m_ObjectHideFlags: 0
