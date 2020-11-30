@@ -8,7 +8,27 @@ public class CameraBehaviour : MonoBehaviour
     [SerializeField] private float moveSpeed = 100f;
     [SerializeField] private float rotateSpeed = 2f;
 
-    void Update()
+    public int yMinLimit = -80;
+    public int yMaxLimit = 80;
+    public float zoomDampening = 5.0f;
+
+    private float xDeg = 0.0f;
+    private float yDeg = 0.0f;
+    private Quaternion currentRotation;
+    private Quaternion desiredRotation;
+    private Quaternion rotation;
+
+    void Start()
+    {
+        Init();
+    }
+
+    void OnEnable()
+    {
+        Init();
+    }
+
+    void LateUpdate()
     {
         Vector3 pos = transform.position;
 
@@ -25,10 +45,36 @@ public class CameraBehaviour : MonoBehaviour
         transform.position = pos;
 
         // rotating by mouse drag
-        if (Input.GetMouseButton(2))
+        if (Input.GetMouseButton(1))
         {
-            transform.Rotate(transform.up, Input.GetAxis("Mouse X") * rotateSpeed);
-            transform.Rotate(transform.right, Input.GetAxis("Mouse Y") * rotateSpeed);
+            xDeg += Input.GetAxis("Mouse X") * rotateSpeed * 0.02f;
+            yDeg -= Input.GetAxis("Mouse Y") * rotateSpeed * 0.02f;
+
+            yDeg = ClampAngle(yDeg, yMinLimit, yMaxLimit);
+            desiredRotation = Quaternion.Euler(yDeg, xDeg, 0);
+            currentRotation = transform.rotation;
+
+            rotation = Quaternion.Lerp(currentRotation, desiredRotation, 1);
+            transform.rotation = rotation;
         }
+    }
+
+    private void Init()
+    {
+        rotation = transform.rotation;
+        currentRotation = transform.rotation;
+        desiredRotation = transform.rotation;
+
+        xDeg = Vector3.Angle(Vector3.right, transform.right);
+        yDeg = Vector3.Angle(Vector3.up, transform.up);
+    }
+
+    private float ClampAngle(float angle, float min, float max)
+    {
+        if (angle < -360)
+            angle += 360;
+        if (angle > 360)
+            angle -= 360;
+        return Mathf.Clamp(angle, min, max);
     }
 }
