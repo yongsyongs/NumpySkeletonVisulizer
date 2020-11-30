@@ -8,19 +8,33 @@ using UnityEngine.Video;
 
 public class VideoManager : MonoBehaviour
 {
-    [SerializeField] private uint frameInterval = 5;
+    [SerializeField] private int annotFrameCount = 100;
 
     private VideoPlayer player;
-    private uint currentFrame = 0;
-    private uint maxFrame;
+    private int currentFrameIdx = 0;
+    private int maxFrame;
     private Vector2 resolution;
+    private int[] annotFrames;
 
     private bool isFirstReady = true;
     private bool loaded = false;
 
-    public uint CurrentFrame
+    public int CurrentFrame
     {
-        get { return currentFrame; }
+        get { return AnnotFrames[currentFrameIdx]; }
+    }
+    public int CurrentFrameIdx
+    {
+        get { return currentFrameIdx; }
+    }
+    public int AnnotFrameCount
+    {
+        get { return annotFrameCount; }
+    }
+    public int[] AnnotFrames
+    {
+        get
+        { return annotFrames; }
     }
     public Vector2 Resolution
     {
@@ -48,11 +62,12 @@ public class VideoManager : MonoBehaviour
         {
             if (loaded)
             {
-                if (currentFrame <= frameInterval)
-                    currentFrame = 0;
+                if (currentFrameIdx <= 0)
+                    currentFrameIdx = 0;
                 else
-                    currentFrame -= frameInterval;
-                player.frame = currentFrame;
+                    currentFrameIdx--;
+                player.frame = annotFrames[currentFrameIdx];
+                Debug.Log("Current Frame: " + annotFrames[currentFrameIdx]);
             }
             else
                 Debug.Log("Video is not loaded");
@@ -61,11 +76,12 @@ public class VideoManager : MonoBehaviour
         {
             if(loaded)
             {
-                if (currentFrame >= maxFrame)
-                    currentFrame = maxFrame;
+                if (currentFrameIdx >= annotFrameCount - 1)
+                    currentFrameIdx = annotFrameCount - 1;
                 else
-                    currentFrame += frameInterval;
-                player.frame = currentFrame;
+                    currentFrameIdx++;
+                player.frame = annotFrames[currentFrameIdx];
+                Debug.Log("Current Frame: " + annotFrames[currentFrameIdx]);
             }
             else
                 Debug.Log("Video is not loaded");
@@ -112,16 +128,16 @@ public class VideoManager : MonoBehaviour
             //}
             player.frame = 0;
             player.Pause();
-            maxFrame = (uint)player.frameCount - 1;
-            currentFrame = 0;
+            maxFrame = (int)player.frameCount - 1;
+            annotFrames = new int[annotFrameCount];
+            annotFrames[0] = 0;
+            for (int i = 1; i < annotFrameCount; i++)
+                annotFrames[i] = (int)((float)annotFrames[i - 1] + (float)maxFrame / (float)annotFrameCount);
+            currentFrameIdx = 0;
             resolution = new Vector2(player.width, player.height);
             isFirstReady = false;
             loaded = true;
             Debug.Log("Video Loaded! maxFrame: " + maxFrame.ToString());
         }
-        else
-        {
-        }
-            Debug.Log("Ready Frame: " + frameIdx.ToString());
     }
 }
