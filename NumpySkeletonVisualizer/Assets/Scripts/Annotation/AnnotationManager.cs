@@ -15,16 +15,17 @@ public class AnnotationManager : MonoBehaviour
     private VideoManager vm;
     private Vector2 invalidVector = new Vector2(-1f, -1f);
     private GameObject draggingObject;
+    private GameObject[] annotObjects;
 
-    private List<Dictionary<string, object>> records;
+    private NDArray records;
 
     private bool annotMode = false;
     private bool dragging = false;
 
-    
+
     void Start()
     {
-        records = new List<Dictionary<string, object>>();
+        records = np.empty();
         vm = GetComponent<VideoManager>();
     }
 
@@ -59,54 +60,8 @@ public class AnnotationManager : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            GameObject[] annotObjs = GameObject.FindGameObjectsWithTag("Annotation");
-            if (annotObjs.Length > 0)
-            {
-                NDArray annots = np.zeros(new Shape(annotObjs.Length, 2), NPTypeCode.Float);
-                foreach (GameObject ao in annotObjs)
-                {
-                    int an = ao.GetComponent<AnnotationPoint>().annotNumber;
-                    Vector2 v = WorldToImage(ao.transform.position);
-                    annots[an, 0] = v.x;
-                    annots[an, 1] = v.y;
-                }
-
-                try
-                {
-                    int idx = GetAnnotationIndex(vm.CurrentFrame);
-                    if (idx != -1)
-                        records[idx]["Annotation"] = annots;
-                    else
-                    {
-                        Dictionary<string, object> dict = new Dictionary<string, object>();
-                        dict["Frame"] = vm.CurrentFrame;
-                        dict["Annotation"] = annots;
-                        records.Add(dict);
-                    }
-                    Debug.Log($" Frame {vm.CurrentFrame} Annotation Recorded");
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                }
-            }
-        }
-
-        if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D))
-        {
-            int idx = GetAnnotationIndex(vm.CurrentFrame);
-            if (idx != -1)
-            {
-                NDArray pos = (NDArray)records[idx]["Annotation"];
-                foreach(GameObject ao in GameObject.FindGameObjectsWithTag("Annotation"))
-                {
-                    int an = ao.GetComponent<AnnotationPoint>().annotNumber;
-                    ao.transform.position = ImageToWorld(new Vector2(pos[an, 0], pos[an, 1]));
-                }
-            }
-        }
+        if (records.shape.Length > 0 && !(Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D)))
+            SyncObjToArray();
 
         if (draggingObject != null)
         {
@@ -115,28 +70,31 @@ public class AnnotationManager : MonoBehaviour
                 v.x -= dragginObjectMoveSpeed;
             if (Input.GetKey(KeyCode.RightArrow))
                 v.x += dragginObjectMoveSpeed;
-            if (Input.GetKey(KeyCode.DownArrow)) 
+            if (Input.GetKey(KeyCode.DownArrow))
                 v.y -= dragginObjectMoveSpeed;
             if (Input.GetKey(KeyCode.UpArrow))
                 v.y += dragginObjectMoveSpeed;
         }
     }
 
-    private int GetAnnotationIndex(uint frame)
+    void LateUpdate()
     {
-        if (records == null)
-            return -1;
-        int result = records.FindIndex(x => (uint)x["Frame"] == frame);
-        return result;
+        if(Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D))
+        {
+            if (np.all(records[vm.CurrentFrameIdx] == -1f))
+                records[vm.CurrentFrameIdx] = records[vm.CurrentFrameIdx - 1];
+            else
+                SyncArrayToObj();
+        }
     }
 
     private void ClickImage()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
-        if(Physics.Raycast(ray, out hit))
+        if (Physics.Raycast(ray, out hit))
         {
-            if(hit.collider.tag == "Annotation")
+            if (hit.collider.tag == "Annotation")
             {
                 dragging = true;
                 draggingObject = hit.collider.gameObject;
@@ -247,7 +205,7 @@ public class AnnotationManager : MonoBehaviour
             colors[i] = Vector4.Lerp(start, end, (float)i / (float)num);
         return colors;
     }
-    
+
     public void ChangeMode()
     {
         annotMode = !annotMode;
@@ -309,13 +267,17 @@ public class AnnotationManager : MonoBehaviour
         if (path.Length != 0)
         {
             adjmat = np.load(path).astype(NPTypeCode.Int32);
-            Debug.Assert(adjmat.shape.Length == 2 && adjmat.shape[0] == adjmat.shape[1]); 
-            
+            Debug.Assert(adjmat.shape.Length == 2 && adjmat.shape[0] == adjmat.shape[1]);
+
+            records = np.empty(new Shape(vm.AnnotFrames.Length, adjmat.shape[0], 2), NPTypeCode.Float);
+            records[":"] = -1;
+
             path = EditorUtility.OpenFilePanel("Open Initial Position File", ".", "npy");
             if (path.Length != 0)
             {
                 initpos = np.load(path).astype(NPTypeCode.Float);
                 Debug.Assert(adjmat.shape[0] == initpos.shape[0] && initpos.shape[1] == 2);
+                records[0] = initpos;
             }
         }
 
@@ -338,37 +300,51 @@ public class AnnotationManager : MonoBehaviour
                 GenerateDefaultAnnotForm(adjmat, initPos);
             }
         }
+        annotObjects = GameObject.FindGameObjectsWithTag("Annotation");
     }
 
     public void SaveAnnotationFile()
     {
-        if (records.Count < 1)
+        if (records == null)
             Debug.LogError("No Annotation Recorded");
-
-        var r = records.OrderBy(x => (uint)x["Frame"]);
-        records.Sort(
-            delegate(Dictionary<string, object> x, Dictionary<string, object> y)
-            { 
-                return ((uint)x["Frame"]).CompareTo((uint)y["Frame"]);
-            }
-        );
-
-        uint[] frames = new uint[records.Count];
-        NDArray annots = np.empty(records.Count, ((NDArray)records[0]["Annotation"]).shape[0], 2);
-        
-        for(int i = 0; i < records.Count; i++)
-        {
-            frames[i] = (uint)records[i]["Frame"];
-            annots[i] = (NDArray)records[i]["Annotation"];
-        }
 
         string path = EditorUtility.SaveFilePanel("Save Annotation File", "", vm.VideoFileName, "npy");
         Debug.Log(path);
         List<string> dirs = path.Split('/').ToList();
         string basePath = path.Remove(path.Length - 4);
-        np.save(basePath + "_annot.npy", annots);
-        np.save(basePath + "_index.npy", new NDArray(frames));
+        np.save(basePath + "_annot.npy", records);
+        np.save(basePath + "_index.npy", new NDArray(vm.AnnotFrames));
         Debug.Log("Saved Annotation File at " + basePath + "_[annot/index].npy");
+    }
+
+    public void SyncObjToArray()
+    {
+        if (annotObjects.Length > 0)
+        {
+            NDArray annots = np.zeros(new Shape(annotObjects.Length, 2), NPTypeCode.Float);
+            foreach (GameObject ao in annotObjects)
+            {
+                int an = ao.GetComponent<AnnotationPoint>().annotNumber;
+                Vector2 v = WorldToImage(ao.transform.position);
+                annots[an, 0] = v.x;
+                annots[an, 1] = v.y;
+            }
+
+            records[vm.CurrentFrameIdx] = annots;
+        }
+    }
+
+    public void SyncArrayToObj()
+    {
+        if (annotObjects.Length > 0)
+        {
+            foreach (GameObject ao in annotObjects)
+            {
+                int an = ao.GetComponent<AnnotationPoint>().annotNumber;
+                Vector3 v = ImageToWorld(new Vector2(records[vm.CurrentFrameIdx, an, 0], records[vm.CurrentFrameIdx, an, 1]));
+                ao.transform.position = v;
+            }
+        }
     }
 
     void DrawLine(Transform start, Transform end, Color color)
