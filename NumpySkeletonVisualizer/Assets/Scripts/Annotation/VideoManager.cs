@@ -5,10 +5,12 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Video;
+using UnityEngine.UI;
 
 public class VideoManager : MonoBehaviour
 {
     [SerializeField] private int annotFrameCount = 100;
+    [SerializeField] private Text frameIdxText;
 
     private VideoPlayer player;
     private int currentFrameIdx = 0;
@@ -67,7 +69,6 @@ public class VideoManager : MonoBehaviour
                 else
                     currentFrameIdx--;
                 player.frame = annotFrames[currentFrameIdx];
-                Debug.Log("Current Frame: " + annotFrames[currentFrameIdx]);
             }
             else
                 Debug.Log("Video is not loaded");
@@ -81,11 +82,11 @@ public class VideoManager : MonoBehaviour
                 else
                     currentFrameIdx++;
                 player.frame = annotFrames[currentFrameIdx];
-                Debug.Log("Current Frame: " + annotFrames[currentFrameIdx]);
             }
             else
                 Debug.Log("Video is not loaded");
         }
+        frameIdxText.text = "Frame: " + currentFrameIdx.ToString();
     }
 
     public void OpenVideoFile()
