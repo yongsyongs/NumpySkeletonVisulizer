@@ -27,6 +27,7 @@ public class AnnotationManager : MonoBehaviour
     {
         records = np.empty();
         vm = GetComponent<VideoManager>();
+        annotObjects = new GameObject[0];
     }
 
     void Update()
@@ -58,23 +59,37 @@ public class AnnotationManager : MonoBehaviour
                     }
                 }
             }
+
+            if (draggingObject != null)
+            {
+                Vector3 v = Vector3.zero;
+                if (Input.GetKey(KeyCode.LeftArrow))
+                    v.x = -dragginObjectMoveSpeed;
+                if (Input.GetKey(KeyCode.RightArrow))
+                    v.x = dragginObjectMoveSpeed;
+                if (Input.GetKey(KeyCode.DownArrow))
+                    v.y = -dragginObjectMoveSpeed;
+                if (Input.GetKey(KeyCode.UpArrow))
+                    v.y = dragginObjectMoveSpeed;
+                draggingObject.transform.position += v;
+            }
+
+            if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.R))
+            {
+                if (vm.CurrentFrameIdx > 0)
+                {
+                    if (Input.GetKey(KeyCode.LeftShift) && draggingObject != null)
+                        SyncArrayToObj(vm.CurrentFrameIdx - 1, draggingObject.GetComponent<AnnotationPoint>().annotNumber);
+                    else
+                        SyncArrayToObj(vm.CurrentFrameIdx - 1);
+                }
+            }
         }
 
-        if (records.shape.Length > 0 && !(Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D)))
+        if (records.shape.Length >= 0 && !(Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D)))
             SyncObjToArray();
 
-        if (draggingObject != null)
-        {
-            Vector3 v = draggingObject.transform.position;
-            if (Input.GetKey(KeyCode.LeftArrow))
-                v.x -= dragginObjectMoveSpeed;
-            if (Input.GetKey(KeyCode.RightArrow))
-                v.x += dragginObjectMoveSpeed;
-            if (Input.GetKey(KeyCode.DownArrow))
-                v.y -= dragginObjectMoveSpeed;
-            if (Input.GetKey(KeyCode.UpArrow))
-                v.y += dragginObjectMoveSpeed;
-        }
+
     }
 
     void LateUpdate()
@@ -317,7 +332,35 @@ public class AnnotationManager : MonoBehaviour
         Debug.Log("Saved Annotation File at " + basePath + "_[annot/index].npy");
     }
 
+    public void LoadAnnotationFile()
+    {
+        string path = EditorUtility.OpenFilePanel("Load Annotation File", "", "npy");
+        Debug.Log(path);
+        if(path.Length > 0)
+        {
+            List<string> dirs = path.Split('/').ToList();
+            string basePath;
+            if (dirs[dirs.Count - 1].Substring(dirs[dirs.Count - 1].Length - 10) == "_annot.npy")
+            {
+                basePath = path.Remove(path.Length - 10);
+                records = np.load(path);
+
+                NDArray frames = np.load(basePath + "_index.npy");
+                Debug.Assert(np.all(frames == new NDArray(vm.AnnotFrames)));
+            }
+            else
+                Debug.LogError("Unexpected Filename: " + dirs[dirs.Count - 1]);
+            SyncArrayToObj();
+            Debug.Log("Loaded Annotation File.");
+        }
+    }
+
     public void SyncObjToArray()
+    {
+        SyncObjToArray(vm.CurrentFrameIdx);
+    }
+
+    public void SyncObjToArray(int idx)
     {
         if (annotObjects.Length > 0)
         {
@@ -330,18 +373,35 @@ public class AnnotationManager : MonoBehaviour
                 annots[an, 1] = v.y;
             }
 
-            records[vm.CurrentFrameIdx] = annots;
+            records[idx] = annots;
         }
     }
 
     public void SyncArrayToObj()
+    {
+        SyncArrayToObj(vm.CurrentFrameIdx);
+    }
+
+    public void SyncArrayToObj(int idx)
     {
         if (annotObjects.Length > 0)
         {
             foreach (GameObject ao in annotObjects)
             {
                 int an = ao.GetComponent<AnnotationPoint>().annotNumber;
-                Vector3 v = ImageToWorld(new Vector2(records[vm.CurrentFrameIdx, an, 0], records[vm.CurrentFrameIdx, an, 1]));
+                Vector3 v = ImageToWorld(new Vector2(records[idx, an, 0], records[idx, an, 1]));
+                ao.transform.position = v;
+            }
+        }
+    }
+
+    public void SyncArrayToObj(int fidx, int aidx)
+    {
+        if (annotObjects.Length > 0)
+        {
+            foreach (GameObject ao in annotObjects.Where(x => x.GetComponent<AnnotationPoint>().annotNumber == aidx))
+            {
+                Vector3 v = ImageToWorld(new Vector2(records[fidx, aidx, 0], records[fidx, aidx, 1]));
                 ao.transform.position = v;
             }
         }
